@@ -209,6 +209,20 @@
             display: inline-block;
         }
 
+        .age-timer {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #555;
+            font-family: 'Courier New', monospace;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
         .message {
             position: absolute;
             top: 10px;
@@ -257,12 +271,139 @@
             border-radius: 8px;
             border: 2px solid #ddd;
         }
+
+        .log-toggle {
+            width: calc(100% - 40px);
+            margin: 10px 20px;
+            padding: 12px;
+            background: #f5f5f5;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .log-toggle:hover {
+            background: #e0e0e0;
+        }
+
+        .activity-log {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background: #f9f9f9;
+            margin: 0 20px;
+            border-radius: 10px;
+        }
+
+        .activity-log.open {
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .log-entry {
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 13px;
+            color: #555;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-time {
+            color: #999;
+            font-size: 11px;
+            margin-right: 8px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .modal-content h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .modal-content select {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .modal-btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .modal-btn-secondary {
+            background: #e0e0e0;
+            color: #555;
+        }
     </style>
 </head>
 <body>
     <div class="game-container">
         <div class="screen">
             <div class="message" id="message"></div>
+            <div class="age-timer" id="ageTimer">0y:0d:0h:0m</div>
             
             <div class="pet-name" id="petName">My Pet</div>
             <span class="pet-stage" id="petStage">Egg</span>
@@ -354,6 +495,14 @@
             </div>
         </div>
 
+        <button class="log-toggle" onclick="toggleLog()">
+            📜 Activity Log
+        </button>
+
+        <div class="activity-log" id="activityLog">
+            <!-- Log entries will be added here dynamically -->
+        </div>
+
         <select class="animal-select" id="animalSelect" onchange="game.changeAnimal()">
             <option value="dog">Dog</option>
             <option value="cat">Cat</option>
@@ -362,6 +511,28 @@
         </select>
 
         <button class="new-game-btn" onclick="game.newGame()">New Game</button>
+    </div>
+
+    <!-- Modal for naming pet -->
+    <div class="modal" id="nameModal">
+        <div class="modal-content">
+            <h2>🐾 Create Your Pet</h2>
+            <label for="petNameInput">Pet Name:</label>
+            <input type="text" id="petNameInput" placeholder="Enter pet name" maxlength="20">
+            
+            <label for="petAnimalInput">Choose Animal:</label>
+            <select id="petAnimalInput">
+                <option value="dog">🐕 Dog</option>
+                <option value="cat">🐱 Cat</option>
+                <option value="snake">🐍 Snake</option>
+                <option value="bird">🐦 Bird</option>
+            </select>
+            
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-secondary" onclick="game.cancelNaming()">Cancel</button>
+                <button class="modal-btn modal-btn-primary" onclick="game.confirmNaming()">Create Pet</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -456,13 +627,19 @@
                     currentState: 'normal',
                     stepsToday: 0,
                     birthTime: Date.now(),
-                    lastUpdate: Date.now()
+                    lastUpdate: Date.now(),
+                    activityLog: []
                 };
             }
 
             init() {
                 // Handle time passed while app was closed
                 this.handleOfflineTime();
+                
+                // Ensure activity log exists (for backward compatibility)
+                if (!this.pet.activityLog) {
+                    this.pet.activityLog = [];
+                }
                 
                 // Update display
                 this.updateDisplay();
@@ -473,6 +650,9 @@
                 
                 // Set animal selector
                 document.getElementById('animalSelect').value = this.pet.animal;
+                
+                // Update log display
+                this.updateLogDisplay();
             }
 
             handleOfflineTime() {
@@ -591,6 +771,7 @@
                 if (newStage !== this.pet.stage) {
                     this.pet.stage = newStage;
                     this.showMessage(`Your pet evolved to ${newStage}!`);
+                    this.logActivity(`🎉 Evolved to ${newStage}!`);
                 }
             }
 
@@ -604,6 +785,7 @@
                 this.pet.hunger = Math.min(100, this.pet.hunger + 30);
                 this.pet.happiness = Math.min(100, this.pet.happiness + 5);
                 this.showMessage('Yummy! 🍖');
+                this.logActivity('Fed pet 🍖');
                 this.updateDisplay();
                 
                 setTimeout(() => {
@@ -627,6 +809,7 @@
                 this.pet.happiness = Math.min(100, this.pet.happiness + 25);
                 this.pet.energy = Math.max(0, this.pet.energy - 10);
                 this.showMessage('Whee! So fun! 🎮');
+                this.logActivity('Played with pet 🎮');
                 this.updateDisplay();
                 
                 setTimeout(() => {
@@ -640,6 +823,7 @@
                 this.pet.isDirty = false;
                 this.pet.happiness = Math.min(100, this.pet.happiness + 10);
                 this.showMessage('All clean! ✨');
+                this.logActivity('Cleaned pet 🧹');
                 this.updateDisplay();
             }
 
@@ -652,6 +836,7 @@
                 this.pet.isSick = false;
                 this.pet.health = Math.min(100, this.pet.health + 40);
                 this.showMessage('Feeling better! 💊');
+                this.logActivity('Gave medicine 💊');
                 this.updateDisplay();
             }
 
@@ -659,6 +844,7 @@
                 this.pet.isSleeping = !this.pet.isSleeping;
                 document.getElementById('sleepBtnText').textContent = this.pet.isSleeping ? 'Wake Up' : 'Sleep';
                 this.showMessage(this.pet.isSleeping ? 'Goodnight! 💤' : 'Good morning! ☀️');
+                this.logActivity(this.pet.isSleeping ? 'Pet went to sleep 💤' : 'Pet woke up ☀️');
                 this.updateDisplay();
             }
 
@@ -678,28 +864,85 @@
                 this.pet.energy = Math.max(0, this.pet.energy - 15);
                 this.pet.health = Math.min(100, this.pet.health + 10);
                 this.showMessage('Going for a walk! 🚶');
+                this.logActivity('Went for a walk 🚶');
                 this.updateDisplay();
                 
                 // Walk for 5 seconds
                 setTimeout(() => {
                     if (this.pet.currentState === 'walking') {
                         this.pet.currentState = 'normal';
-                        this.showMessage(`Walk complete! +${Math.floor(this.pet.stepsToday % 20 + 10)} steps`);
+                        const steps = Math.floor(this.pet.stepsToday % 20 + 10);
+                        this.showMessage(`Walk complete! +${steps} steps`);
                         this.updateDisplay();
                     }
                 }, 5000);
+            }
+
+            logActivity(message) {
+                // Ensure activityLog exists
+                if (!this.pet.activityLog) {
+                    this.pet.activityLog = [];
+                }
+                
+                const timestamp = new Date().toLocaleTimeString();
+                this.pet.activityLog.unshift({
+                    time: timestamp,
+                    message: message
+                });
+                
+                // Keep only last 50 entries
+                if (this.pet.activityLog.length > 50) {
+                    this.pet.activityLog = this.pet.activityLog.slice(0, 50);
+                }
+                
+                this.updateLogDisplay();
+            }
+
+            toggleLog() {
+                const log = document.getElementById('activityLog');
+                log.classList.toggle('open');
+            }
+
+            updateLogDisplay() {
+                const logContainer = document.getElementById('activityLog');
+                
+                // Ensure activityLog exists
+                if (!this.pet.activityLog) {
+                    this.pet.activityLog = [];
+                }
+                
+                if (this.pet.activityLog.length === 0) {
+                    logContainer.innerHTML = '<div class="log-entry">No activity yet. Start interacting with your pet!</div>';
+                    return;
+                }
+                
+                logContainer.innerHTML = this.pet.activityLog.map(entry => 
+                    `<div class="log-entry">
+                        <span class="log-time">${entry.time}</span>
+                        <span>${entry.message}</span>
+                    </div>`
+                ).join('');
             }
 
             changeAnimal() {
                 const newAnimal = document.getElementById('animalSelect').value;
                 this.pet.animal = newAnimal;
                 this.showMessage(`Changed to ${newAnimal}!`);
+                this.logActivity(`Changed animal to ${newAnimal}`);
                 this.updateDisplay();
             }
 
             updateDisplay() {
                 const icons = ANIMAL_ICONS[this.pet.animal];
                 const petDisplay = document.getElementById('petDisplay');
+                
+                // Update age timer
+                const totalSeconds = Math.floor(this.pet.age);
+                const years = Math.floor(totalSeconds / 31536000);
+                const days = Math.floor((totalSeconds % 31536000) / 86400);
+                const hours = Math.floor((totalSeconds % 86400) / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                document.getElementById('ageTimer').textContent = `${years}y:${days}d:${hours}h:${minutes}m`;
                 
                 // Update pet icon based on state and stage
                 let icon;
@@ -780,14 +1023,51 @@
             }
 
             newGame() {
-                if (confirm('Start a new game? Current pet will be lost!')) {
-                    localStorage.removeItem('tamagotchi_save');
-                    this.pet = this.createNewPet();
-                    this.lastUpdateTime = Date.now();
-                    document.getElementById('sleepBtnText').textContent = 'Sleep';
-                    this.showMessage('New pet hatching! 🥚');
-                    this.updateDisplay();
+                if (this.pet && this.pet.age > 0) {
+                    if (!confirm('Start a new game? Current pet will be lost!')) {
+                        return;
+                    }
                 }
+                
+                // Show naming modal
+                document.getElementById('nameModal').classList.add('show');
+                document.getElementById('petNameInput').value = '';
+                document.getElementById('petAnimalInput').value = 'dog';
+                document.getElementById('petNameInput').focus();
+            }
+
+            confirmNaming() {
+                const petName = document.getElementById('petNameInput').value.trim();
+                const petAnimal = document.getElementById('petAnimalInput').value;
+                
+                if (!petName) {
+                    alert('Please enter a name for your pet!');
+                    return;
+                }
+                
+                // Create new pet with custom name and animal
+                localStorage.removeItem('tamagotchi_save');
+                this.pet = this.createNewPet();
+                this.pet.name = petName;
+                this.pet.animal = petAnimal;
+                this.lastUpdateTime = Date.now();
+                
+                // Reset UI
+                document.getElementById('sleepBtnText').textContent = 'Sleep';
+                document.getElementById('animalSelect').value = petAnimal;
+                
+                // Close modal
+                document.getElementById('nameModal').classList.remove('show');
+                
+                // Log and display
+                this.logActivity(`🐣 ${petName} was born!`);
+                this.showMessage(`Welcome ${petName}! 🥚`);
+                this.updateDisplay();
+                this.updateLogDisplay();
+            }
+
+            cancelNaming() {
+                document.getElementById('nameModal').classList.remove('show');
             }
         }
 
@@ -796,6 +1076,11 @@
         window.onload = () => {
             game = new TamagotchiGame();
         };
+
+        // Global wrapper functions for buttons
+        function toggleLog() {
+            if (game) game.toggleLog();
+        }
 
         // Save before closing
         window.onbeforeunload = () => {
