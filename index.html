@@ -223,6 +223,19 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
+        .pet-type-display {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #555;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
         .message {
             position: absolute;
             top: 10px;
@@ -404,6 +417,7 @@
         <div class="screen">
             <div class="message" id="message"></div>
             <div class="age-timer" id="ageTimer">0y:0d:0h:0m</div>
+            <div class="pet-type-display" id="petTypeDisplay">🐕 Dog</div>
             
             <div class="pet-name" id="petName">My Pet</div>
             <span class="pet-stage" id="petStage">Egg</span>
@@ -502,13 +516,6 @@
         <div class="activity-log" id="activityLog">
             <!-- Log entries will be added here dynamically -->
         </div>
-
-        <select class="animal-select" id="animalSelect" onchange="game.changeAnimal()">
-            <option value="dog">Dog</option>
-            <option value="cat">Cat</option>
-            <option value="snake">Snake</option>
-            <option value="bird">Bird</option>
-        </select>
 
         <button class="new-game-btn" onclick="game.newGame()">New Game</button>
     </div>
@@ -648,11 +655,14 @@
                 this.startGameLoop();
                 this.startStepCounter();
                 
-                // Set animal selector
-                document.getElementById('animalSelect').value = this.pet.animal;
-                
                 // Update log display
                 this.updateLogDisplay();
+                
+                // If this is a brand new pet (no name set), show naming modal
+                if (this.pet.name === 'My Pet' && this.pet.age === 0) {
+                    // Small delay to ensure DOM is ready
+                    setTimeout(() => this.newGame(), 100);
+                }
             }
 
             handleOfflineTime() {
@@ -944,6 +954,21 @@
                 const minutes = Math.floor((totalSeconds % 3600) / 60);
                 document.getElementById('ageTimer').textContent = `${years}y:${days}d:${hours}h:${minutes}m`;
                 
+                // Update pet type display
+                const animalEmojis = {
+                    dog: '🐕',
+                    cat: '🐱',
+                    snake: '🐍',
+                    bird: '🐦'
+                };
+                const animalNames = {
+                    dog: 'Dog',
+                    cat: 'Cat',
+                    snake: 'Snake',
+                    bird: 'Bird'
+                };
+                document.getElementById('petTypeDisplay').textContent = `${animalEmojis[this.pet.animal]} ${animalNames[this.pet.animal]}`;
+                
                 // Update pet icon based on state and stage
                 let icon;
                 if (this.pet.stage === 'egg') {
@@ -1023,7 +1048,8 @@
             }
 
             newGame() {
-                if (this.pet && this.pet.age > 0) {
+                // Only confirm if there's an existing pet with progress
+                if (this.pet && this.pet.age > 0 && this.pet.name !== 'My Pet') {
                     if (!confirm('Start a new game? Current pet will be lost!')) {
                         return;
                     }
@@ -1054,7 +1080,6 @@
                 
                 // Reset UI
                 document.getElementById('sleepBtnText').textContent = 'Sleep';
-                document.getElementById('animalSelect').value = petAnimal;
                 
                 // Close modal
                 document.getElementById('nameModal').classList.remove('show');
