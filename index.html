@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Pet</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 400px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .screen {
+            background: #e8f5e9;
+            padding: 30px;
+            min-height: 350px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .pet-display {
+            font-size: 80px;
+            margin: 20px 0;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .pet-display.eating {
+            animation: bounce 0.5s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .pet-display.sick {
+            animation: shake 0.5s ease-in-out infinite;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .pet-display.sleeping {
+            animation: breathe 2s ease-in-out infinite;
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .status-bars {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .stat {
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 5px;
+        }
+
+        .stat-bar {
+            width: 100%;
+            height: 20px;
+            background: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid #999;
+        }
+
+        .stat-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+            border-radius: 8px;
+        }
+
+        .hunger-fill { background: linear-gradient(90deg, #ff6b6b, #ff8787); }
+        .happiness-fill { background: linear-gradient(90deg, #ffd93d, #ffe66d); }
+        .health-fill { background: linear-gradient(90deg, #51cf66, #69db7c); }
+        .energy-fill { background: linear-gradient(90deg, #4dabf7, #74c0fc); }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .control-btn {
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.1s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-feed {
+            background: linear-gradient(135deg, #ff6b6b, #ff8787);
+            color: white;
+        }
+
+        .btn-play {
+            background: linear-gradient(135deg, #ffd93d, #ffe66d);
+            color: #333;
+        }
+
+        .btn-clean {
+            background: linear-gradient(135deg, #51cf66, #69db7c);
+            color: white;
+        }
+
+        .btn-medicine {
+            background: linear-gradient(135deg, #e599f7, #f3a0ff);
+            color: white;
+        }
+
+        .btn-sleep {
+            background: linear-gradient(135deg, #748ffc, #91a7ff);
+            color: white;
+        }
+
+        .btn-walk {
+            background: linear-gradient(135deg, #4dabf7, #74c0fc);
+            color: white;
+        }
+
+        .info-panel {
+            padding: 15px 20px;
+            background: #e3f2fd;
+            border-top: 2px solid #90caf9;
+            font-size: 13px;
+            color: #555;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+
+        .pet-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .pet-stage {
+            font-size: 14px;
+            color: #666;
+            background: #fff;
+            padding: 5px 15px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+
+        .message {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .message.show {
+            opacity: 1;
+        }
+
+        .steps-display {
+            background: white;
+            padding: 8px 15px;
+            border-radius: 15px;
+            font-weight: bold;
+            color: #4dabf7;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .new-game-btn {
+            width: calc(100% - 40px);
+            margin: 20px;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .animal-select {
+            margin: 20px;
+            padding: 10px;
+            font-size: 14px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="screen">
+            <div class="message" id="message"></div>
+            
+            <div class="pet-name" id="petName">My Pet</div>
+            <span class="pet-stage" id="petStage">Egg</span>
+            
+            <div class="pet-display" id="petDisplay">🥚</div>
+            
+            <div class="status-bars">
+                <div class="stat">
+                    <div class="stat-label">
+                        <span>🍖 Hunger</span>
+                        <span id="hungerValue">100</span>
+                    </div>
+                    <div class="stat-bar">
+                        <div class="stat-fill hunger-fill" id="hungerBar" style="width: 100%"></div>
+                    </div>
+                </div>
+
+                <div class="stat">
+                    <div class="stat-label">
+                        <span>😊 Happiness</span>
+                        <span id="happinessValue">100</span>
+                    </div>
+                    <div class="stat-bar">
+                        <div class="stat-fill happiness-fill" id="happinessBar" style="width: 100%"></div>
+                    </div>
+                </div>
+
+                <div class="stat">
+                    <div class="stat-label">
+                        <span>❤️ Health</span>
+                        <span id="healthValue">100</span>
+                    </div>
+                    <div class="stat-bar">
+                        <div class="stat-fill health-fill" id="healthBar" style="width: 100%"></div>
+                    </div>
+                </div>
+
+                <div class="stat">
+                    <div class="stat-label">
+                        <span>⚡ Energy</span>
+                        <span id="energyValue">100</span>
+                    </div>
+                    <div class="stat-bar">
+                        <div class="stat-fill energy-fill" id="energyBar" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="control-btn btn-feed" onclick="game.feed()">
+                <span>🍖</span>
+                <span>Feed</span>
+            </button>
+            <button class="control-btn btn-play" onclick="game.play()">
+                <span>🎮</span>
+                <span>Play</span>
+            </button>
+            <button class="control-btn btn-clean" onclick="game.clean()">
+                <span>🧹</span>
+                <span>Clean</span>
+            </button>
+            <button class="control-btn btn-medicine" onclick="game.medicine()" id="medicineBtn">
+                <span>💊</span>
+                <span>Medicine</span>
+            </button>
+            <button class="control-btn btn-sleep" onclick="game.toggleSleep()">
+                <span>💤</span>
+                <span id="sleepBtnText">Sleep</span>
+            </button>
+            <button class="control-btn btn-walk" onclick="game.walk()">
+                <span>👟</span>
+                <span>Walk</span>
+            </button>
+        </div>
+
+        <div class="info-panel">
+            <div class="info-row">
+                <span>Age:</span>
+                <span id="ageDisplay">0 days</span>
+            </div>
+            <div class="info-row">
+                <span>Steps Today:</span>
+                <span class="steps-display" id="stepsDisplay">0 steps</span>
+            </div>
+            <div class="info-row">
+                <span>Status:</span>
+                <span id="statusDisplay">Happy</span>
+            </div>
+        </div>
+
+        <select class="animal-select" id="animalSelect" onchange="game.changeAnimal()">
+            <option value="dog">Dog</option>
+            <option value="cat">Cat</option>
+            <option value="snake">Snake</option>
+            <option value="bird">Bird</option>
+        </select>
+
+        <button class="new-game-btn" onclick="game.newGame()">New Game</button>
+    </div>
+
+    <script>
+        // Animal icon sets - easily expandable for different animals
+        const ANIMAL_ICONS = {
+            dog: {
+                egg: '🥚',
+                baby: '🐕',
+                child: '🐶',
+                teen: '🐕',
+                adult: '🐕‍🦺',
+                normal: '🐕',
+                hungry: '🐶',
+                eating: '🐕',
+                sick: '🤒',
+                sleeping: '😴',
+                happy: '🐕‍🦺',
+                walking: '🦮',
+                dirty: '🐕'
+            },
+            cat: {
+                egg: '🥚',
+                baby: '🐱',
+                child: '🐱',
+                teen: '🐈',
+                adult: '🐈',
+                normal: '🐱',
+                hungry: '🐱',
+                eating: '🐈',
+                sick: '🤒',
+                sleeping: '😴',
+                happy: '😺',
+                walking: '🐈',
+                dirty: '🐱'
+            },
+            snake: {
+                egg: '🥚',
+                baby: '🐍',
+                child: '🐍',
+                teen: '🐍',
+                adult: '🐍',
+                normal: '🐍',
+                hungry: '🐍',
+                eating: '🐍',
+                sick: '🤒',
+                sleeping: '😴',
+                happy: '🐍',
+                walking: '🐍',
+                dirty: '🐍'
+            },
+            bird: {
+                egg: '🥚',
+                baby: '🐣',
+                child: '🐤',
+                teen: '🐥',
+                adult: '🐦',
+                normal: '🐦',
+                hungry: '🐥',
+                eating: '🐦',
+                sick: '🤒',
+                sleeping: '😴',
+                happy: '🐦',
+                walking: '🐦',
+                dirty: '🐦'
+            }
+        };
+
+        // Game state management
+        class TamagotchiGame {
+            constructor() {
+                this.pet = this.loadGame() || this.createNewPet();
+                this.updateInterval = null;
+                this.stepCounter = 0;
+                this.lastUpdateTime = Date.now();
+                this.init();
+            }
+
+            createNewPet() {
+                return {
+                    name: 'My Pet',
+                    animal: 'dog',
+                    stage: 'egg',
+                    age: 0, // in seconds
+                    hunger: 100,
+                    happiness: 100,
+                    health: 100,
+                    energy: 100,
+                    cleanliness: 100,
+                    isSick: false,
+                    isSleeping: false,
+                    isDirty: false,
+                    currentState: 'normal',
+                    stepsToday: 0,
+                    birthTime: Date.now(),
+                    lastUpdate: Date.now()
+                };
+            }
+
+            init() {
+                // Handle time passed while app was closed
+                this.handleOfflineTime();
+                
+                // Update display
+                this.updateDisplay();
+                
+                // Start game loops
+                this.startGameLoop();
+                this.startStepCounter();
+                
+                // Set animal selector
+                document.getElementById('animalSelect').value = this.pet.animal;
+            }
+
+            handleOfflineTime() {
+                const now = Date.now();
+                const timePassed = (now - this.pet.lastUpdate) / 1000; // seconds
+                
+                if (timePassed > 0) {
+                    // Decay stats based on time passed (but cap it to prevent death from long absences)
+                    const minutes = Math.min(timePassed / 60, 120); // Cap at 2 hours
+                    
+                    this.pet.hunger = Math.max(0, this.pet.hunger - minutes * 0.5);
+                    this.pet.happiness = Math.max(0, this.pet.happiness - minutes * 0.3);
+                    this.pet.energy = Math.min(100, this.pet.energy + (this.pet.isSleeping ? minutes * 0.5 : -minutes * 0.2));
+                    this.pet.cleanliness = Math.max(0, this.pet.cleanliness - minutes * 0.2);
+                    
+                    // Age the pet
+                    this.pet.age += timePassed;
+                    this.checkEvolution();
+                    
+                    this.pet.lastUpdate = now;
+                }
+            }
+
+            startGameLoop() {
+                this.updateInterval = setInterval(() => {
+                    this.updateStats();
+                    this.checkStatus();
+                    this.updateDisplay();
+                    this.saveGame();
+                }, 1000);
+            }
+
+            startStepCounter() {
+                // Simulate step counting (in a real app, you'd use the Pedometer API)
+                // For now, we'll increment steps randomly when walking
+                setInterval(() => {
+                    if (this.pet.currentState === 'walking') {
+                        this.pet.stepsToday += Math.floor(Math.random() * 3) + 1;
+                        this.updateDisplay();
+                    }
+                }, 500);
+            }
+
+            updateStats() {
+                const now = Date.now();
+                const deltaTime = (now - this.lastUpdateTime) / 1000;
+                this.lastUpdateTime = now;
+                
+                // Age the pet
+                this.pet.age += deltaTime;
+                this.checkEvolution();
+                
+                // Don't decay if sleeping
+                if (this.pet.isSleeping) {
+                    this.pet.energy = Math.min(100, this.pet.energy + 0.3);
+                    return;
+                }
+                
+                // Natural stat decay
+                this.pet.hunger = Math.max(0, this.pet.hunger - 0.05);
+                this.pet.happiness = Math.max(0, this.pet.happiness - 0.03);
+                this.pet.energy = Math.max(0, this.pet.energy - 0.02);
+                this.pet.cleanliness = Math.max(0, this.pet.cleanliness - 0.02);
+                
+                // Update health based on other stats
+                if (this.pet.hunger < 30 || this.pet.happiness < 30 || this.pet.cleanliness < 30) {
+                    this.pet.health = Math.max(0, this.pet.health - 0.05);
+                } else if (this.pet.health < 100 && !this.pet.isSick) {
+                    this.pet.health = Math.min(100, this.pet.health + 0.02);
+                }
+            }
+
+            checkStatus() {
+                // Check if pet becomes sick
+                if (this.pet.health < 40 && !this.pet.isSick) {
+                    this.pet.isSick = true;
+                    this.showMessage('Your pet is sick! Give medicine!');
+                }
+                
+                // Check if pet becomes dirty
+                if (this.pet.cleanliness < 30 && !this.pet.isDirty) {
+                    this.pet.isDirty = true;
+                    this.showMessage('Your pet is dirty! Time to clean!');
+                }
+                
+                // Auto-set state based on conditions
+                if (this.pet.isSleeping) {
+                    this.pet.currentState = 'sleeping';
+                } else if (this.pet.isSick) {
+                    this.pet.currentState = 'sick';
+                } else if (this.pet.isDirty) {
+                    this.pet.currentState = 'dirty';
+                } else if (this.pet.hunger < 40) {
+                    this.pet.currentState = 'hungry';
+                } else {
+                    this.pet.currentState = 'normal';
+                }
+            }
+
+            checkEvolution() {
+                const ageInDays = this.pet.age / 86400;
+                let newStage = this.pet.stage;
+                
+                if (ageInDays < 0.02) { // ~30 minutes
+                    newStage = 'egg';
+                } else if (ageInDays < 0.04) { // ~1 hour
+                    newStage = 'baby';
+                } else if (ageInDays < 0.08) { // ~2 hours
+                    newStage = 'child';
+                } else if (ageInDays < 0.15) { // ~3.5 hours
+                    newStage = 'teen';
+                } else {
+                    newStage = 'adult';
+                }
+                
+                if (newStage !== this.pet.stage) {
+                    this.pet.stage = newStage;
+                    this.showMessage(`Your pet evolved to ${newStage}!`);
+                }
+            }
+
+            feed() {
+                if (this.pet.isSleeping) {
+                    this.showMessage('Pet is sleeping!');
+                    return;
+                }
+                
+                this.pet.currentState = 'eating';
+                this.pet.hunger = Math.min(100, this.pet.hunger + 30);
+                this.pet.happiness = Math.min(100, this.pet.happiness + 5);
+                this.showMessage('Yummy! 🍖');
+                this.updateDisplay();
+                
+                setTimeout(() => {
+                    this.pet.currentState = 'normal';
+                    this.updateDisplay();
+                }, 2000);
+            }
+
+            play() {
+                if (this.pet.isSleeping) {
+                    this.showMessage('Pet is sleeping!');
+                    return;
+                }
+                
+                if (this.pet.energy < 20) {
+                    this.showMessage('Too tired to play!');
+                    return;
+                }
+                
+                this.pet.currentState = 'happy';
+                this.pet.happiness = Math.min(100, this.pet.happiness + 25);
+                this.pet.energy = Math.max(0, this.pet.energy - 10);
+                this.showMessage('Whee! So fun! 🎮');
+                this.updateDisplay();
+                
+                setTimeout(() => {
+                    this.pet.currentState = 'normal';
+                    this.updateDisplay();
+                }, 3000);
+            }
+
+            clean() {
+                this.pet.cleanliness = 100;
+                this.pet.isDirty = false;
+                this.pet.happiness = Math.min(100, this.pet.happiness + 10);
+                this.showMessage('All clean! ✨');
+                this.updateDisplay();
+            }
+
+            medicine() {
+                if (!this.pet.isSick) {
+                    this.showMessage('Pet is not sick!');
+                    return;
+                }
+                
+                this.pet.isSick = false;
+                this.pet.health = Math.min(100, this.pet.health + 40);
+                this.showMessage('Feeling better! 💊');
+                this.updateDisplay();
+            }
+
+            toggleSleep() {
+                this.pet.isSleeping = !this.pet.isSleeping;
+                document.getElementById('sleepBtnText').textContent = this.pet.isSleeping ? 'Wake Up' : 'Sleep';
+                this.showMessage(this.pet.isSleeping ? 'Goodnight! 💤' : 'Good morning! ☀️');
+                this.updateDisplay();
+            }
+
+            walk() {
+                if (this.pet.isSleeping) {
+                    this.showMessage('Pet is sleeping!');
+                    return;
+                }
+                
+                if (this.pet.energy < 30) {
+                    this.showMessage('Too tired to walk!');
+                    return;
+                }
+                
+                this.pet.currentState = 'walking';
+                this.pet.happiness = Math.min(100, this.pet.happiness + 15);
+                this.pet.energy = Math.max(0, this.pet.energy - 15);
+                this.pet.health = Math.min(100, this.pet.health + 10);
+                this.showMessage('Going for a walk! 🚶');
+                this.updateDisplay();
+                
+                // Walk for 5 seconds
+                setTimeout(() => {
+                    if (this.pet.currentState === 'walking') {
+                        this.pet.currentState = 'normal';
+                        this.showMessage(`Walk complete! +${Math.floor(this.pet.stepsToday % 20 + 10)} steps`);
+                        this.updateDisplay();
+                    }
+                }, 5000);
+            }
+
+            changeAnimal() {
+                const newAnimal = document.getElementById('animalSelect').value;
+                this.pet.animal = newAnimal;
+                this.showMessage(`Changed to ${newAnimal}!`);
+                this.updateDisplay();
+            }
+
+            updateDisplay() {
+                const icons = ANIMAL_ICONS[this.pet.animal];
+                const petDisplay = document.getElementById('petDisplay');
+                
+                // Update pet icon based on state and stage
+                let icon;
+                if (this.pet.stage === 'egg') {
+                    icon = icons.egg;
+                } else if (this.pet.currentState === 'eating') {
+                    icon = icons.eating;
+                } else if (this.pet.currentState === 'sleeping') {
+                    icon = icons.sleeping;
+                } else if (this.pet.currentState === 'sick') {
+                    icon = icons.sick;
+                } else if (this.pet.currentState === 'walking') {
+                    icon = icons.walking;
+                } else if (this.pet.currentState === 'happy') {
+                    icon = icons.happy;
+                } else if (this.pet.currentState === 'dirty') {
+                    icon = icons.dirty;
+                } else if (this.pet.currentState === 'hungry') {
+                    icon = icons.hungry;
+                } else {
+                    icon = icons[this.pet.stage] || icons.normal;
+                }
+                
+                petDisplay.textContent = icon;
+                petDisplay.className = 'pet-display ' + this.pet.currentState;
+                
+                // Update stats
+                this.updateStatBar('hunger', this.pet.hunger);
+                this.updateStatBar('happiness', this.pet.happiness);
+                this.updateStatBar('health', this.pet.health);
+                this.updateStatBar('energy', this.pet.energy);
+                
+                // Update info
+                document.getElementById('petName').textContent = this.pet.name;
+                document.getElementById('petStage').textContent = this.pet.stage.charAt(0).toUpperCase() + this.pet.stage.slice(1);
+                document.getElementById('ageDisplay').textContent = `${Math.floor(this.pet.age / 86400)} days`;
+                document.getElementById('stepsDisplay').textContent = `${this.pet.stepsToday} steps`;
+                
+                // Update status text
+                let status = 'Happy';
+                if (this.pet.isSick) status = 'Sick';
+                else if (this.pet.isSleeping) status = 'Sleeping';
+                else if (this.pet.isDirty) status = 'Dirty';
+                else if (this.pet.hunger < 40) status = 'Hungry';
+                else if (this.pet.happiness < 40) status = 'Sad';
+                else if (this.pet.energy < 30) status = 'Tired';
+                
+                document.getElementById('statusDisplay').textContent = status;
+                
+                // Enable/disable medicine button
+                document.getElementById('medicineBtn').disabled = !this.pet.isSick;
+            }
+
+            updateStatBar(stat, value) {
+                const bar = document.getElementById(stat + 'Bar');
+                const valueDisplay = document.getElementById(stat + 'Value');
+                bar.style.width = value + '%';
+                valueDisplay.textContent = Math.floor(value);
+            }
+
+            showMessage(text) {
+                const message = document.getElementById('message');
+                message.textContent = text;
+                message.classList.add('show');
+                setTimeout(() => {
+                    message.classList.remove('show');
+                }, 2000);
+            }
+
+            saveGame() {
+                this.pet.lastUpdate = Date.now();
+                localStorage.setItem('tamagotchi_save', JSON.stringify(this.pet));
+            }
+
+            loadGame() {
+                const saved = localStorage.getItem('tamagotchi_save');
+                return saved ? JSON.parse(saved) : null;
+            }
+
+            newGame() {
+                if (confirm('Start a new game? Current pet will be lost!')) {
+                    localStorage.removeItem('tamagotchi_save');
+                    this.pet = this.createNewPet();
+                    this.lastUpdateTime = Date.now();
+                    document.getElementById('sleepBtnText').textContent = 'Sleep';
+                    this.showMessage('New pet hatching! 🥚');
+                    this.updateDisplay();
+                }
+            }
+        }
+
+        // Initialize game
+        let game;
+        window.onload = () => {
+            game = new TamagotchiGame();
+        };
+
+        // Save before closing
+        window.onbeforeunload = () => {
+            if (game) game.saveGame();
+        };
+    </script>
+</body>
+</html>
